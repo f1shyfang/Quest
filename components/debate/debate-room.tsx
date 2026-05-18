@@ -46,6 +46,7 @@ export function DebateRoom({ roomId }: { roomId: string }) {
     null
   );
   const [judgeRequested, setJudgeRequested] = useState(false);
+  const [loadError, setLoadError] = useState<"not_found" | "down" | null>(null);
   const creditsAppliedRef = useRef(false);
   const pusherRef = useRef<PusherClient | null>(null);
 
@@ -55,12 +56,25 @@ export function DebateRoom({ roomId }: { roomId: string }) {
   }, []);
 
   const refreshRoom = useCallback(async () => {
-    const resp = await fetch(`/api/room-state?roomId=${roomId}`);
-    if (!resp.ok) return;
-    const data = (await resp.json()) as RoomSnapshot;
-    setSnapshot(data);
-    if (data.verdict) {
-      setVerdictPayload(data.verdict);
+    try {
+      const resp = await fetch(`/api/room-state?roomId=${roomId}`);
+      if (resp.status === 404) {
+        setLoadError("not_found");
+        return;
+      }
+      if (!resp.ok) {
+        // Only surface the "down" state if we haven't already loaded a snapshot.
+        setLoadError((prev) => prev ?? "down");
+        return;
+      }
+      const data = (await resp.json()) as RoomSnapshot;
+      setLoadError(null);
+      setSnapshot(data);
+      if (data.verdict) {
+        setVerdictPayload(data.verdict);
+      }
+    } catch {
+      setLoadError((prev) => prev ?? "down");
     }
   }, [roomId]);
 
@@ -159,10 +173,45 @@ export function DebateRoom({ roomId }: { roomId: string }) {
     }
   }, [judgeRequested, roomId]);
 
+  if (loadError === "not_found") {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background px-6 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="font-display text-2xl font-bold">
+            Debate not found
+          </div>
+          <p className="max-w-md text-sm text-muted-foreground">
+            This room has expired or never existed. Rooms only live for two
+            hours after they&apos;re created.
+          </p>
+          <Link
+            href="/"
+            className="mt-3 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
+          >
+            Find a new opponent
+          </Link>
+        </div>
+      </main>
+    );
+  }
   if (!snapshot) {
     return (
-      <main className="grid min-h-screen place-items-center bg-background">
-        <div className="text-sm text-muted-foreground">Loading debate…</div>
+      <main className="grid min-h-screen place-items-center bg-background px-6 text-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="text-sm text-muted-foreground">
+            {loadError === "down"
+              ? "Couldn't load the debate. Retrying…"
+              : "Loading debate…"}
+          </div>
+          {loadError === "down" ? (
+            <Link
+              href="/"
+              className="text-sm text-primary hover:underline"
+            >
+              Back to lobby
+            </Link>
+          ) : null}
+        </div>
       </main>
     );
   }
