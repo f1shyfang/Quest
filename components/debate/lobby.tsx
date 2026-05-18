@@ -61,21 +61,29 @@ export function Lobby() {
     setStatus("queueing");
     try {
       const resp = await fetchWithSession("/api/join-queue", { method: "POST" });
-      const data = (await resp.json()) as
+      if (!resp.ok) {
+        setStatus("error");
+        setError("Matchmaking is unavailable. Try again in a moment.");
+        return;
+      }
+      const data = (await resp.json().catch(() => null)) as
         | { status: "matched"; roomId: string; prompt: string; stake: number }
         | { status: "waiting" }
-        | { error: string };
-      if ("status" in data && data.status === "matched") {
+        | { error: string }
+        | null;
+      if (data && "status" in data && data.status === "matched") {
         handleMatched(data);
         return;
       }
-      if ("error" in data) {
+      if (data && "error" in data) {
         setStatus("error");
         setError(data.error);
+        return;
       }
-    } catch (err) {
+      // Status "waiting" — the Pusher channel will deliver "matched" event when paired.
+    } catch {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Network error");
+      setError("Network error. Check your connection and try again.");
     }
   }, [credits, handleMatched]);
 
