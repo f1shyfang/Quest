@@ -80,3 +80,8 @@ Run `~/.claude/skills/gstack/design/dist/design variants --brief "..." --count 3
 
 - Move magic numbers (turn duration 45s, turn count 3, default stake 25, room ID length 6) into `lib/config.ts`. Currently scattered across handlers and components. Low priority — only matters when game balance is being tuned.
 - Standardize API error response shape across all routes: `{ error: { code: string, message: string, retryable: boolean } }`. Currently each handler returns its own shape.
+
+## Testing tech debt (surfaced by /qa on 2026-05-19)
+
+- **Component tests for lobby + debate-room error states.** ISSUE-001 (debate room infinite spinner on bad roomId) and ISSUE-002 (raw JSON.parse error leak in lobby) were caught by browser smoke test, not vitest. Adding `@testing-library/react` + JSDOM environment to the smoke kit (~30 min) would let us regression-test the error paths without spinning a browser. Files: `components/debate/lobby.tsx` (resp.ok check), `components/debate/debate-room.tsx` (loadError state machine).
+- **End-to-end test on a staging deploy with real env vars.** The full debate loop (matchmaking → video → audio → judgment → result) has only been verified by unit-mocking the handler and by static-rendering the lobby. The integration path is untested. Pre-hackathon, run a live two-device test against a Vercel preview deploy.
