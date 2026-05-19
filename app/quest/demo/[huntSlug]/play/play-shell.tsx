@@ -10,6 +10,7 @@ import type { Clue, Hunt, MemberRow, ProgressRow, Session, TeamSummary } from ".
 import { haversineM } from "./geo";
 import { QRScanner } from "./QRScanner";
 import { QuestIcon } from "../../../_components/QuestIcon";
+import { InviteQRModal } from "./InviteQRModal";
 
 type Props = {
   hunt: Hunt;
@@ -179,6 +180,12 @@ function LobbyView({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"idle" | "code" | "link">("idle");
+  const [qrOpen, setQrOpen] = useState(false);
+
+  const joinLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/quest/demo/${hunt.slug}?code=${team.invite_code}`
+      : `/quest/demo/${hunt.slug}?code=${team.invite_code}`;
 
   const start = async () => {
     setBusy(true);
@@ -206,12 +213,8 @@ function LobbyView({
   };
 
   const copyLink = async () => {
-    const link =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/quest/demo/${hunt.slug}?code=${team.invite_code}`
-        : "";
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(joinLink);
       setCopied("link");
       setTimeout(() => setCopied("idle"), 1800);
     } catch {
@@ -228,7 +231,7 @@ function LobbyView({
       await navigator.share({
         title: `${team.name} — UNSW Quest`,
         text: `Join my UNSW Quest team — invite code ${team.invite_code}`,
-        url: `${window.location.origin}/quest/demo/${hunt.slug}?code=${team.invite_code}`,
+        url: joinLink,
       });
     } catch {
       // user cancelled; ignore
@@ -266,11 +269,13 @@ function LobbyView({
         </div>
         <button
           onClick={copyCode}
-          aria-label="Copy invite code"
+          aria-label={copied === "code" ? "Invite code copied" : "Copy invite code"}
           title="Tap to copy"
           style={{
-            display: "block",
-            textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
             fontFamily: "var(--hand)",
             fontSize: 56,
             lineHeight: 1,
@@ -284,25 +289,30 @@ function LobbyView({
             cursor: "pointer",
           }}
         >
-          {team.invite_code}
+          <span>{team.invite_code}</span>
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--accent)",
+              opacity: copied === "code" ? 1 : 0.6,
+              transition: "opacity 160ms ease",
+            }}
+          >
+            <QuestIcon name={copied === "code" ? "check" : "copy"} size={22} />
+          </span>
         </button>
+        <div
+          className="muted small"
+          style={{ textAlign: "center", marginTop: 6, fontSize: 11 }}
+        >
+          {copied === "code" ? "Copied to clipboard" : "Tap the code to copy"}
+        </div>
         <div className="row gap-2" style={{ marginTop: 14 }}>
           <button
             className="btn primary grow row gap-1"
-            onClick={copyCode}
-            type="button"
-            style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
-          >
-            {copied === "code" ? (
-              <>
-                <QuestIcon name="check" size={14} /> Copied
-              </>
-            ) : (
-              "Copy code"
-            )}
-          </button>
-          <button
-            className="btn ink-btn grow row gap-1"
             onClick={share}
             type="button"
             style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
@@ -312,14 +322,35 @@ function LobbyView({
                 <QuestIcon name="check" size={14} /> Link copied
               </>
             ) : (
-              "Share link"
+              <>
+                <QuestIcon name="share" size={14} /> Share link
+              </>
             )}
+          </button>
+          <button
+            className="btn ink-btn grow row gap-1"
+            onClick={() => setQrOpen(true)}
+            type="button"
+            style={{ minHeight: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <QuestIcon name="camera" size={14} /> Show QR
           </button>
         </div>
         <div className="muted small" style={{ textAlign: "center", marginTop: 10 }}>
           Friends can join at <b>/quest/demo</b> → <i>Join with code</i>
         </div>
       </div>
+
+      {qrOpen ? (
+        <InviteQRModal
+          link={joinLink}
+          teamName={team.name}
+          inviteCode={team.invite_code}
+          onClose={() => setQrOpen(false)}
+          onCopyLink={copyLink}
+          linkCopied={copied === "link"}
+        />
+      ) : null}
 
       {/* Team grid */}
       <div style={{ width: "100%" }}>

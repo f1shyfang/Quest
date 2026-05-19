@@ -15,7 +15,8 @@ export type IconName =
   | "sparkles"
   | "medal"
   | "play"
-  | "check";
+  | "check"
+  | "copy";
 
 type Props = {
   name: IconName;
@@ -150,6 +151,12 @@ const PATHS: Record<IconName, (stroke: number) => React.ReactNode> = {
   check: () => (
     <>
       <path d="M4.6 12.6 L9.4 17.6 L19.4 6.4" />
+    </>
+  ),
+  copy: () => (
+    <>
+      <path d="M5.4 4.4 L13.6 4.2 L13.8 14.4 L5.5 14.6 Z" />
+      <path d="M9.2 7.8 L17.6 8 L17.5 19.4 L9.4 19.6 Z" />
     </>
   ),
   medal: () => (
