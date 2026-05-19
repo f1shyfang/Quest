@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDeviceIdServer } from "@/lib/device-id";
 import { PlayShell } from "./play-shell";
 import { Crumbs } from "../../_components/Crumbs";
 import type { Hunt, Clue, Session, TeamSummary, MemberRow, ProgressRow } from "./types";
@@ -13,11 +14,7 @@ export default async function PlayPage({
 }) {
   const { huntSlug } = await params;
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?next=/quest/demo/${huntSlug}/play`);
+  const deviceId = await getDeviceIdServer();
 
   const { data: hunt } = await supabase
     .from("quest_hunts")
@@ -42,7 +39,7 @@ export default async function PlayPage({
   const { data: myMemberships, error: memErr } = await supabase
     .from("quest_team_members")
     .select("team_id")
-    .eq("user_id", user.id);
+    .eq("user_id", deviceId);
   logPgErr("quest play: memberships fetch failed", memErr);
   const teamIds = (myMemberships ?? []).map((m) => m.team_id);
   if (teamIds.length === 0) {
@@ -115,7 +112,7 @@ export default async function PlayPage({
       hunt={hunt as Hunt}
       session={session as Session}
       team={myTeam}
-      currentUserId={user.id}
+      currentUserId={deviceId}
       members={members as MemberRow[]}
       clues={(clues ?? []) as Clue[]}
       initialProgress={(progress ?? []) as ProgressRow[]}

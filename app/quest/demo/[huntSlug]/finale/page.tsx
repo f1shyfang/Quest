@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDeviceIdServer } from "@/lib/device-id";
 import { Crumbs } from "../../_components/Crumbs";
 
 export const metadata = { title: "UNSW Quest · Finale" };
@@ -19,10 +20,7 @@ export default async function FinalePage({
 }) {
   const { huntSlug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?next=/quest/demo/${huntSlug}/finale`);
+  const deviceId = await getDeviceIdServer();
 
   const { data: hunt } = await supabase
     .from("quest_hunts")
@@ -35,7 +33,7 @@ export default async function FinalePage({
   const { data: mems } = await supabase
     .from("quest_team_members")
     .select("team_id")
-    .eq("user_id", user.id);
+    .eq("user_id", deviceId);
   const teamIds = (mems ?? []).map((m) => m.team_id);
   if (teamIds.length === 0) redirect(`/quest/demo/${huntSlug}`);
   const { data: teamsFound } = await supabase

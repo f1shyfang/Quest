@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDeviceIdServer } from "@/lib/device-id";
 import { TeamGate } from "./team-gate";
 
 export const metadata = { title: "UNSW Quest · Hunt detail" };
@@ -13,11 +14,7 @@ export default async function HuntDetailPage({
 }) {
   const { huntSlug } = await params;
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?next=/quest/demo/${huntSlug}`);
+  const deviceId = await getDeviceIdServer();
 
   const { data: hunt } = await supabase
     .from("quest_hunts")
@@ -31,7 +28,7 @@ export default async function HuntDetailPage({
   const { data: myMemberships } = await supabase
     .from("quest_team_members")
     .select("team_id")
-    .eq("user_id", user.id);
+    .eq("user_id", deviceId);
   const myTeamIds = (myMemberships ?? []).map((m) => m.team_id);
   if (myTeamIds.length > 0) {
     const { data: matching } = await supabase

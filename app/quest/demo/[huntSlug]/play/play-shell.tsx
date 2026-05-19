@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getDeviceIdClient } from "@/lib/device-id";
 import type { Clue, Hunt, MemberRow, ProgressRow, Session, TeamSummary } from "./types";
 import { haversineM } from "./geo";
 
@@ -180,7 +181,10 @@ function LobbyView({
   const start = async () => {
     setBusy(true);
     setError(null);
-    const { data, error } = await supabase.rpc("quest_start_hunt", { p_team_id: team.id });
+    const { data, error } = await supabase.rpc("quest_start_hunt", {
+      p_user_id: getDeviceIdClient(),
+      p_team_id: team.id,
+    });
     setBusy(false);
     if (error || !data) {
       setError(error?.message ?? "Could not start");
@@ -560,6 +564,7 @@ function ActiveView({
     setBusy(true);
     setError(null);
     const { data, error } = await supabase.rpc("quest_unlock_clue", {
+      p_user_id: getDeviceIdClient(),
       p_session_id: session.id,
       p_clue_id: clue.id,
       p_manual_override: !!opts?.manualOverride,

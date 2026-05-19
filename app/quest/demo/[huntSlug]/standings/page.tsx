@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDeviceIdServer } from "@/lib/device-id";
 import { StandingsView } from "./standings-view";
 import { Crumbs } from "../../_components/Crumbs";
 
@@ -13,10 +14,7 @@ export default async function StandingsPage({
 }) {
   const { huntSlug } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?next=/quest/demo/${huntSlug}/standings`);
+  const deviceId = await getDeviceIdServer();
 
   const { data: hunt } = await supabase
     .from("quest_hunts")
@@ -54,7 +52,7 @@ export default async function StandingsPage({
     const { data: mems } = await supabase
       .from("quest_team_members")
       .select("team_id")
-      .eq("user_id", user.id);
+      .eq("user_id", deviceId);
     const ids = (mems ?? []).map((m) => m.team_id);
     if (ids.length === 0) return null;
     const { data: matching } = await supabase

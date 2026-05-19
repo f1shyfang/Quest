@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { getDeviceIdClient } from "@/lib/device-id";
 
 export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: string }) {
   const router = useRouter();
@@ -21,6 +22,7 @@ export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: strin
     setError(null);
     const supabase = createClient();
     const { data, error } = await supabase.rpc("quest_create_team", {
+      p_user_id: getDeviceIdClient(),
       p_hunt_id: huntId,
       p_team_name: teamName.trim() || undefined,
     });
@@ -42,7 +44,10 @@ export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: strin
       setBusy(false);
       return;
     }
-    const { data, error } = await supabase.rpc("quest_join_team", { p_invite_code: code });
+    const { data, error } = await supabase.rpc("quest_join_team", {
+      p_user_id: getDeviceIdClient(),
+      p_invite_code: code,
+    });
     setBusy(false);
     if (error || !data || data.length === 0) {
       setError(error?.message ?? "Could not join team");

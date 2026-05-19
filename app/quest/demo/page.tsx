@@ -1,22 +1,18 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getDeviceIdServer } from "@/lib/device-id";
 
 export const metadata = { title: "UNSW Quest · Pick a hunt" };
 
 export default async function DemoHomePage() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login?next=/quest/demo");
-  }
+  const deviceId = await getDeviceIdServer();
 
   // Make sure the player has a quest profile.
-  await supabase.rpc("quest_ensure_profile", { p_display_name: "" });
+  await supabase.rpc("quest_ensure_profile", {
+    p_user_id: deviceId,
+    p_display_name: "",
+  });
 
   const { data: hunts, error } = await supabase
     .from("quest_hunts")
@@ -38,7 +34,7 @@ export default async function DemoHomePage() {
   const { data: memberships } = await supabase
     .from("quest_team_members")
     .select("team_id")
-    .eq("user_id", user.id);
+    .eq("user_id", deviceId);
   const teamIds = (memberships ?? []).map((m) => m.team_id);
   const { data: myTeams } = teamIds.length
     ? await supabase
@@ -134,7 +130,7 @@ export default async function DemoHomePage() {
       </div>
 
       <div className="muted small" style={{ textAlign: "center", marginTop: 16, maxWidth: 360 }}>
-        Signed in as {user.email}.
+        Player <span className="mono">{deviceId.slice(0, 8)}</span>
       </div>
     </div>
   );
