@@ -169,6 +169,7 @@ function LobbyView({
   const isLeader = team.leader_user_id === currentUserId;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"idle" | "code" | "link">("idle");
 
   const start = async () => {
     setBusy(true);
@@ -182,70 +183,264 @@ function LobbyView({
     onStarted(data as Session);
   };
 
-  return (
-    <div className="viewer" style={{ gap: 18 }}>
-      {headerSlot}
-      <div className="hand" style={{ fontSize: 32, lineHeight: 1, textAlign: "center" }}>
-        {team.name}
-      </div>
-      <div className="muted small">Hunt · {hunt.name}</div>
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(team.invite_code);
+      setCopied("code");
+      setTimeout(() => setCopied("idle"), 1800);
+    } catch {
+      setError("Could not copy — long-press the code to select.");
+    }
+  };
 
-      <div className="card" style={{ padding: 18, width: "min(100%, 380px)" }}>
-        <div className="label" style={{ textAlign: "center" }}>INVITE CODE</div>
-        <div
-          className="hand"
+  const copyLink = async () => {
+    const link =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/quest/demo/${hunt.slug}?code=${team.invite_code}`
+        : "";
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied("link");
+      setTimeout(() => setCopied("idle"), 1800);
+    } catch {
+      setError("Could not copy link.");
+    }
+  };
+
+  const share = async () => {
+    if (typeof navigator === "undefined" || !navigator.share) {
+      copyLink();
+      return;
+    }
+    try {
+      await navigator.share({
+        title: `${team.name} — UNSW Quest`,
+        text: `Join my UNSW Quest team — invite code ${team.invite_code}`,
+        url: `${window.location.origin}/quest/demo/${hunt.slug}?code=${team.invite_code}`,
+      });
+    } catch {
+      // user cancelled; ignore
+    }
+  };
+
+  const empty = Math.max(0, 6 - members.length);
+  const slots: Array<MemberRow | null> = [...members, ...Array.from({ length: empty }, () => null)];
+  const leaderName =
+    members.find((m) => m.user_id === team.leader_user_id)?.display_name ?? "the leader";
+
+  return (
+    <div className="viewer" style={{ gap: 16, width: "min(100%, 460px)" }}>
+      {headerSlot}
+
+      {/* Header */}
+      <div style={{ textAlign: "center" }}>
+        <div className="label" style={{ marginBottom: 4 }}>WAITING ROOM</div>
+        <div className="hand" style={{ fontSize: 36, lineHeight: 1 }}>{team.name}</div>
+        <div className="muted small" style={{ marginTop: 4 }}>Playing · {hunt.name}</div>
+      </div>
+
+      {/* Invite code panel */}
+      <div
+        className="card"
+        style={{
+          padding: 20,
+          width: "100%",
+          background: "var(--accent-soft)",
+          borderColor: "var(--accent)",
+        }}
+      >
+        <div className="label" style={{ textAlign: "center", color: "var(--accent)" }}>
+          INVITE CODE
+        </div>
+        <button
+          onClick={copyCode}
+          aria-label="Copy invite code"
+          title="Tap to copy"
           style={{
+            display: "block",
             textAlign: "center",
-            fontSize: 44,
+            fontFamily: "var(--hand)",
+            fontSize: 56,
             lineHeight: 1,
-            letterSpacing: "0.15em",
+            letterSpacing: "0.18em",
             color: "var(--accent)",
             marginTop: 6,
+            background: "none",
+            border: 0,
+            padding: 0,
+            width: "100%",
+            cursor: "pointer",
           }}
         >
           {team.invite_code}
-        </div>
-        <div className="muted small" style={{ textAlign: "center", marginTop: 4 }}>
-          Share with up to 5 friends
-        </div>
-      </div>
-
-      <div style={{ width: "min(100%, 380px)" }}>
-        <div className="label" style={{ marginBottom: 8 }}>TEAM · {members.length} / 6</div>
-        <div className="card" style={{ padding: 8 }}>
-          {members.map((m) => (
-            <div
-              key={m.user_id}
-              className="row gap-2"
-              style={{ padding: 8, borderBottom: "1px solid var(--hair)" }}
-            >
-              <div
-                className="av"
-                style={{ background: m.avatar_color, color: "white", borderColor: "var(--ink)" }}
-              >
-                {m.display_name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="grow">{m.display_name}</div>
-              {m.user_id === team.leader_user_id ? (
-                <div className="pill ghost" style={{ fontSize: 9 }}>LEADER</div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ width: "min(100%, 380px)" }}>
-        {isLeader ? (
-          <button className="btn primary" onClick={start} disabled={busy} style={{ width: "100%" }}>
-            {busy ? "Starting…" : `Start hunt (${members.length} ${members.length === 1 ? "player" : "players"})`}
+        </button>
+        <div className="row gap-2" style={{ marginTop: 14 }}>
+          <button
+            className="btn primary grow"
+            onClick={copyCode}
+            type="button"
+            style={{ minHeight: 44 }}
+          >
+            {copied === "code" ? "✓ Copied" : "Copy code"}
           </button>
+          <button
+            className="btn ink-btn grow"
+            onClick={share}
+            type="button"
+            style={{ minHeight: 44 }}
+          >
+            {copied === "link" ? "✓ Link copied" : "Share link"}
+          </button>
+        </div>
+        <div className="muted small" style={{ textAlign: "center", marginTop: 10 }}>
+          Friends can join at <b>/quest/demo</b> → <i>Join with code</i>
+        </div>
+      </div>
+
+      {/* Team grid */}
+      <div style={{ width: "100%" }}>
+        <div
+          className="row"
+          style={{ justifyContent: "space-between", marginBottom: 8 }}
+        >
+          <div className="label">TEAM · {members.length} / 6</div>
+          <div className="muted small" style={{ fontFamily: "var(--mono)" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "var(--good)",
+                marginRight: 6,
+                boxShadow: "0 0 0 3px rgba(47,158,107,0.18)",
+              }}
+            />
+            live
+          </div>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: 8,
+          }}
+        >
+          {slots.map((m, i) =>
+            m ? (
+              <div
+                key={m.user_id}
+                className="card"
+                style={{
+                  padding: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: m.user_id === currentUserId ? "var(--accent-soft)" : "var(--paper)",
+                  borderColor: m.user_id === currentUserId ? "var(--accent)" : "var(--ink)",
+                }}
+              >
+                <div
+                  className="av lg"
+                  style={{ background: m.avatar_color, color: "white", borderColor: "var(--ink)" }}
+                >
+                  {m.display_name.slice(0, 2).toUpperCase()}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 13,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {m.user_id === currentUserId ? `${m.display_name} (you)` : m.display_name}
+                  </div>
+                  <div
+                    className="mono small muted"
+                    style={{ marginTop: 2, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" }}
+                  >
+                    {m.user_id === team.leader_user_id ? "Leader" : "Ready"}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                key={`empty-${i}`}
+                className="card dash"
+                style={{
+                  padding: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  borderColor: "var(--hair)",
+                  background: "transparent",
+                }}
+              >
+                <div className="av dash lg" style={{ borderStyle: "dashed" }}>
+                  ?
+                </div>
+                <div className="muted small" style={{ fontSize: 12 }}>
+                  Open slot
+                </div>
+              </div>
+            ),
+          )}
+        </div>
+      </div>
+
+      {/* Start / waiting */}
+      <div style={{ width: "100%" }}>
+        {isLeader ? (
+          <>
+            <button
+              className="btn primary"
+              onClick={start}
+              disabled={busy}
+              style={{ width: "100%", minHeight: 52, fontSize: 15 }}
+            >
+              {busy
+                ? "Starting…"
+                : `Start hunt → ${members.length} ${members.length === 1 ? "player" : "players"}`}
+            </button>
+            {members.length < 2 ? (
+              <div className="muted small" style={{ textAlign: "center", marginTop: 8 }}>
+                Solo runs work, but treasure hunts are better with friends. Share the code first ↑
+              </div>
+            ) : (
+              <div className="muted small" style={{ textAlign: "center", marginTop: 8 }}>
+                Everyone in? Tap start when ready.
+              </div>
+            )}
+          </>
         ) : (
-          <div className="muted small" style={{ textAlign: "center" }}>
-            Waiting for {members.find((m) => m.user_id === team.leader_user_id)?.display_name ?? "the leader"} to start…
+          <div
+            className="card"
+            style={{
+              padding: 14,
+              textAlign: "center",
+              background: "var(--paper)",
+              borderStyle: "dashed",
+              borderColor: "var(--hair)",
+            }}
+          >
+            <div
+              className="hand"
+              style={{ fontSize: 20, lineHeight: 1.1 }}
+            >
+              Waiting for {leaderName} to hit start…
+            </div>
+            <div className="muted small" style={{ marginTop: 6 }}>
+              You&apos;ll move into the first clue automatically.
+            </div>
           </div>
         )}
         {error ? (
-          <div className="p" style={{ color: "var(--bad)", marginTop: 10 }}>{error}</div>
+          <div className="p" style={{ color: "var(--bad)", marginTop: 10, textAlign: "center" }}>
+            {error}
+          </div>
         ) : null}
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { TeamGate } from "./team-gate";
@@ -68,7 +69,9 @@ export default async function HuntDetailPage({
         </div>
       </div>
 
-      <TeamGate huntId={hunt.id} huntSlug={hunt.slug} />
+      <Suspense fallback={null}>
+        <TeamGate huntId={hunt.id} huntSlug={hunt.slug} />
+      </Suspense>
     </div>
   );
 }

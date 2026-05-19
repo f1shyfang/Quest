@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"choose" | "create" | "join">("choose");
+  const searchParams = useSearchParams();
+  const codeFromUrl = (searchParams.get("code") ?? "").toUpperCase().slice(0, 6);
+  const [mode, setMode] = useState<"choose" | "create" | "join">(
+    codeFromUrl ? "join" : "choose",
+  );
   const [teamName, setTeamName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(codeFromUrl);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
