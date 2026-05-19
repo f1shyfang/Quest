@@ -25,12 +25,23 @@ type Props = {
 };
 
 const HINT_PENALTY_SEC = 60;
+const MAP_PENALTY_SEC = 180;
 
 function formatClock(totalSec: number) {
   const sec = Math.max(0, Math.floor(totalSec));
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// Render a penalty as a short, human-friendly cost like "1 min" or "3 min".
+// Falls back to seconds for non-multiples of 60.
+function formatPenalty(sec: number) {
+  if (sec >= 60 && sec % 60 === 0) {
+    const m = sec / 60;
+    return `${m} min`;
+  }
+  return `${sec}s`;
 }
 
 export function PlayShell(props: Props) {
@@ -153,6 +164,7 @@ export function PlayShell(props: Props) {
       hunt={props.hunt}
       team={props.team}
       session={session}
+      setSession={setSession}
       members={members}
       progress={progress}
       clues={props.clues}
@@ -497,6 +509,7 @@ function ActiveView({
   hunt,
   team,
   session,
+  setSession,
   members,
   progress,
   clues,
@@ -507,6 +520,7 @@ function ActiveView({
   hunt: Hunt;
   team: TeamSummary;
   session: Session;
+  setSession: (s: Session) => void;
   members: MemberRow[];
   progress: ProgressRow[];
   clues: Clue[];
@@ -522,11 +536,23 @@ function ActiveView({
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+  // Optimistic penalty buffer: bumped instantly on hint/map confirm so the
+  // displayed timer jumps without waiting for the server. Cleared when the
+  // RPC response replaces the session row.
+  const [pendingPenaltySec, setPendingPenaltySec] = useState(0);
   const startedMs = session.started_at ? new Date(session.started_at).getTime() : now;
-  const elapsedSec = Math.floor((now - startedMs) / 1000) + (session.hint_penalty_seconds ?? 0);
+  const elapsedSec =
+    Math.floor((now - startedMs) / 1000)
+    + (session.hint_penalty_seconds ?? 0)
+    + pendingPenaltySec;
 
   // Hints revealed for the current clue.
   const [hintsRevealed, setHintsRevealed] = useState<number>(0);
+  // Whether the player has paid to see the map for this clue. Once paid,
+  // re-opening the drawer is free and the location name + distance are
+  // exposed on the clue card.
+  const [mapsPaid, setMapsPaid] = useState<Set<string>>(new Set());
+  const mapPaidForClue = mapsPaid.has(clue.id);
   // Reset on clue change.
   const clueKey = `${clue.tier}-${clue.sequence_in_tier}`;
   const prevClueKey = useRef(clueKey);
@@ -534,6 +560,7 @@ function ActiveView({
     if (prevClueKey.current !== clueKey) {
       setHintsRevealed(0);
       setHintConfirmOpen(false);
+      setMapConfirmOpen(false);
       prevClueKey.current = clueKey;
     }
   }, [clueKey]);
@@ -582,6 +609,7 @@ function ActiveView({
 
   // UI state
   const [mapOpen, setMapOpen] = useState(false);
+  const [mapConfirmOpen, setMapConfirmOpen] = useState(false);
   const [hintConfirmOpen, setHintConfirmOpen] = useState(false);
   const [qrScannerOpen, setQRScannerOpen] = useState(false);
   const [unlockOverlay, setUnlockOverlay] = useState<"none" | "clue" | "tier">("none");
@@ -593,16 +621,41 @@ function ActiveView({
 
   const isQRClue = clue.verification_type === "qr";
 
+  // Charge a time penalty to the session immediately so the timer reflects
+  // the cost the moment a hint/map is taken. We bump pendingPenaltySec
+  // synchronously so the visible clock jumps without waiting for the
+  // network; when the RPC returns with the updated session, the bump is
+  // cleared and session.hint_penalty_seconds takes over.
+  const chargePenalty = async (seconds: number): Promise<boolean> => {
+    setPendingPenaltySec((p) => p + seconds);
+    const { data, error } = await supabase.rpc("quest_apply_penalty", {
+      p_user_id: getDeviceIdClient(),
+      p_session_id: session.id,
+      p_seconds: seconds,
+    });
+    if (error || !data) {
+      setError(error?.message ?? "Could not apply penalty");
+      setPendingPenaltySec((p) => Math.max(0, p - seconds));
+      return false;
+    }
+    setSession(data as Session);
+    setPendingPenaltySec((p) => Math.max(0, p - seconds));
+    return true;
+  };
+
   const unlock = async (opts?: { manualOverride?: boolean; photoUrl?: string | null }) => {
     setBusy(true);
     setError(null);
+    // Penalties are charged on hint/map confirm now, so unlock no longer adds
+    // any seconds — we pass 0 to keep the RPC contract stable.
     const { data, error } = await supabase.rpc("quest_unlock_clue", {
       p_user_id: getDeviceIdClient(),
       p_session_id: session.id,
       p_clue_id: clue.id,
       p_manual_override: !!opts?.manualOverride,
-      p_hints_used: hintsRevealed,
+      p_hints_used: 0,
       p_photo_url: opts?.photoUrl ?? undefined,
+      p_maps_used: 0,
     });
     setBusy(false);
     if (error || !data) {
@@ -723,7 +776,9 @@ function ActiveView({
         }}
       >
         <div className="hand" style={{ fontSize: 16, color: "var(--quest-muted)" }}>
-          {clue.location_name ? `Find the ${clue.location_name}` : "Riddle me this…"}
+          {mapPaidForClue && clue.location_name
+            ? `Find the ${clue.location_name}`
+            : "Riddle me this…"}
         </div>
         <div className="riddle" style={{ fontSize: 28, lineHeight: 1.2 }}>
           {clue.body_text}
@@ -766,7 +821,7 @@ function ActiveView({
               disabled={busy}
             >
               <QuestIcon name="bulb" size={18} />
-              hint <span className="acc">(+60s)</span>
+              hint <span className="acc">(+{formatPenalty(HINT_PENALTY_SEC)})</span>
             </button>
           ) : (
             <div className="hand muted" style={{ fontSize: 15 }}>no hints left</div>
@@ -782,11 +837,17 @@ function ActiveView({
               cursor: "pointer",
               alignItems: "center",
             }}
-            onClick={() => setMapOpen(true)}
+            onClick={() => {
+              if (mapPaidForClue) setMapOpen(true);
+              else setMapConfirmOpen(true);
+            }}
             disabled={busy}
           >
             <QuestIcon name="map" size={18} />
             map
+            {mapPaidForClue ? null : (
+              <span className="acc"> (+{formatPenalty(MAP_PENALTY_SEC)})</span>
+            )}
           </button>
         </div>
 
@@ -802,7 +863,9 @@ function ActiveView({
               Scan QR code
             </button>
             <div className="muted small" style={{ textAlign: "center" }}>
-              The laminated code is at {clue.location_name ?? "the checkpoint"}.
+              {mapPaidForClue
+                ? `The laminated code is at ${clue.location_name ?? "the checkpoint"}.`
+                : "Solve the riddle to find the laminated code."}
             </div>
           </>
         ) : (
@@ -828,13 +891,9 @@ function ActiveView({
                 "Walking there →"
               )}
             </button>
-            <div className="muted small" style={{ textAlign: "center" }}>
-              {distanceM != null
-                ? `${Math.round(distanceM)} m from ${clue.location_name ?? "checkpoint"}`
-                : gpsErr
-                  ? gpsErr
-                  : "locating…"}
-            </div>
+            {gpsErr ? (
+              <div className="muted small" style={{ textAlign: "center" }}>{gpsErr}</div>
+            ) : null}
           </>
         )}
         {showOverride && (isQRClue || !withinGeofence) ? (
@@ -891,12 +950,32 @@ function ActiveView({
         />
       ) : null}
 
+      {/* MAP CONFIRM */}
+      {mapConfirmOpen ? (
+        <MapConfirm
+          onCancel={() => setMapConfirmOpen(false)}
+          onConfirm={async () => {
+            const ok = await chargePenalty(MAP_PENALTY_SEC);
+            if (!ok) return;
+            setMapsPaid((prev) => {
+              const next = new Set(prev);
+              next.add(clue.id);
+              return next;
+            });
+            setMapConfirmOpen(false);
+            setMapOpen(true);
+          }}
+        />
+      ) : null}
+
       {/* HINT CONFIRM */}
       {hintConfirmOpen ? (
         <HintConfirm
           which={hintsRevealed + 1}
           onCancel={() => setHintConfirmOpen(false)}
-          onConfirm={() => {
+          onConfirm={async () => {
+            const ok = await chargePenalty(HINT_PENALTY_SEC);
+            if (!ok) return;
             setHintsRevealed((n) => Math.min(n + 1, 2));
             setHintConfirmOpen(false);
           }}
@@ -1052,6 +1131,45 @@ function MapDrawer({
   );
 }
 
+function MapConfirm({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(26,26,34,0.5)",
+        zIndex: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div className="card" style={{ width: "min(100%, 360px)", padding: 18 }}>
+        <div className="row gap-2" style={{ marginBottom: 10, alignItems: "center" }}>
+          <QuestIcon name="map" size={22} style={{ color: "var(--accent)" }} />
+          <div className="h2">Show the map?</div>
+        </div>
+        <div className="p muted" style={{ marginBottom: 14 }}>
+          Opening the map reveals exactly where this clue is and adds{" "}
+          <b style={{ color: "var(--accent)" }}>+{formatPenalty(MAP_PENALTY_SEC)}</b> to your
+          running time. You only pay once per clue.
+        </div>
+        <div className="row gap-2">
+          <button className="btn ghost grow" onClick={onCancel}>Keep solving</button>
+          <button className="btn primary grow" onClick={onConfirm}>Show map</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HintConfirm({
   which,
   onCancel,
@@ -1080,7 +1198,7 @@ function HintConfirm({
           <div className="h2">Reveal hint {which}?</div>
         </div>
         <div className="p muted" style={{ marginBottom: 14 }}>
-          This adds <b style={{ color: "var(--accent)" }}>+{HINT_PENALTY_SEC} seconds</b> to your final time.
+          This adds <b style={{ color: "var(--accent)" }}>+{formatPenalty(HINT_PENALTY_SEC)}</b> to your running time.
           {which === 1 ? " You'll have 1 hint left after this." : " This is your last hint."}
         </div>
         <div className="row gap-2">

@@ -22,6 +22,7 @@ export type Database = {
           hunt_session_id: string;
           id: string;
           manual_override: boolean;
+          maps_used: number;
           photo_capture_url: string | null;
           unlocked_at: string;
         };
@@ -31,6 +32,7 @@ export type Database = {
           hunt_session_id: string;
           id?: string;
           manual_override?: boolean;
+          maps_used?: number;
           photo_capture_url?: string | null;
           unlocked_at?: string;
         };
@@ -40,6 +42,7 @@ export type Database = {
           hunt_session_id?: string;
           id?: string;
           manual_override?: boolean;
+          maps_used?: number;
           photo_capture_url?: string | null;
           unlocked_at?: string;
         };
@@ -267,6 +270,13 @@ export type Database = {
         Args: { p_invite_code: string };
         Returns: { hunt_id: string; team_id: string }[];
       };
+      quest_apply_penalty: {
+        Args: {
+          p_seconds: number;
+          p_session_id: string;
+        };
+        Returns: Database["public"]["Tables"]["quest_hunt_sessions"]["Row"];
+      };
       quest_start_hunt: {
         Args: { p_team_id: string };
         Returns: Database["public"]["Tables"]["quest_hunt_sessions"]["Row"];
@@ -276,6 +286,7 @@ export type Database = {
           p_clue_id: string;
           p_hints_used?: number;
           p_manual_override?: boolean;
+          p_maps_used?: number;
           p_photo_url?: string;
           p_session_id: string;
         };
