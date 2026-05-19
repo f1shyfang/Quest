@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME } from "@/lib/device-id";
 
 /**
- * Device-id middleware.
+ * Device-id proxy (Next.js 16 — renamed from middleware in v16).
  *
  * UNSW Quest v1 replaces Supabase Auth with a device-bound UUID stored in a
  * long-lived cookie. On every matched request we make sure that cookie
@@ -13,7 +13,7 @@ import { COOKIE_NAME } from "@/lib/device-id";
  * direct `supabase.rpc(...)` calls from the browser also need it as the
  * `p_user_id` parameter.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const existing = request.cookies.get(COOKIE_NAME)?.value;
   if (existing) {
     return NextResponse.next();
