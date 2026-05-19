@@ -1,109 +1,146 @@
-<a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
-</a>
+# UNSW Quest
 
-<p align="center">
- The fastest way to build apps with Next.js and Supabase
-</p>
+A location-based scavenger hunt game for the UNSW Kensington campus. Players scan a QR, enter a name, race through riddles and anagrams tied to real places, scan or type geocache codes at each stop, and finish on a live leaderboard.
 
-<p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
-</p>
-<br/>
+**Built on** Next.js 16 (App Router) + Supabase (Postgres, Storage, Realtime, Edge Functions). Mobile-first, designed for iPhone 14–16 viewports; pitched in Firefox's responsive mobile visualiser.
 
-## Features
+> **Status:** Hackathon MVP build in progress. The backend (schema + RPCs + edge functions) is live; the player frontend at `/app/quest/*` is wired up but **migrations 00002–00006 must be applied to the live Supabase project before the app will work end-to-end**. See [`docs/unsw-quest/HANDOVER.md`](docs/unsw-quest/HANDOVER.md) for the current state and the unblock list.
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Proxy
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+---
 
-## Demo
+## Docs
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+Start here, in order:
 
-## Deploy to Vercel
+| Doc | Purpose |
+|---|---|
+| [`docs/unsw-quest/spec_sheet_v1.md`](docs/unsw-quest/spec_sheet_v1.md) | Engineering spec sheet — **current build target**. Demo user flow, MVP feature set, data model, stretch goals. |
+| [`docs/unsw-quest/HANDOVER.md`](docs/unsw-quest/HANDOVER.md) | What's on `main` today, what's blocking the demo, and the next steps in order. |
+| [`docs/unsw-quest/PRD_v1.md`](docs/unsw-quest/PRD_v1.md) | Original product requirements. Strategy, personas, and roadmap are still current; auth + verification + team model are **superseded by the spec sheet**. |
+| [`docs/unsw-quest/clue_content_v1.md`](docs/unsw-quest/clue_content_v1.md) | Seed content: hero hunt + mini hunt riddles. |
+| [`docs/unsw-quest/campus_tips_v1.md`](docs/unsw-quest/campus_tips_v1.md) | UNSW Kensington campus tips & fun facts feeding clue content. |
+| [`design/unsw-quest/wireframes.html`](design/unsw-quest/wireframes.html) | Wireframes (single HTML, open in a browser). |
 
-Vercel deployment will guide you through creating a Supabase account and project.
+---
 
-After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+## Quick start
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+### Prerequisites
 
-The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+- Node.js 20+
+- Supabase project (env vars below)
+- Supabase CLI for migrations (optional but recommended)
 
-If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+### 1. Install
 
-## Clone and run locally
+```bash
+npm install
+```
 
-1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+### 2. Configure environment
 
-2. Create a Next.js app using the Supabase Starter template npx command
+Copy `.env.example` → `.env.local` and fill in:
 
-   ```bash
-   npx create-next-app --example with-supabase with-supabase-app
-   ```
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...           # for migrations + edge fn
+```
 
-   ```bash
-   yarn create next-app --example with-supabase with-supabase-app
-   ```
+### 3. Apply database migrations
 
-   ```bash
-   pnpm create next-app --example with-supabase with-supabase-app
-   ```
+```bash
+supabase db push
+```
 
-3. Use `cd` to change into the app's directory
+Migrations live in [`supabase/migrations/`](supabase/migrations/) and must be applied in order:
 
-   ```bash
-   cd with-supabase-app
-   ```
+| # | Migration | Purpose |
+|---|---|---|
+| `…000000` | `building_enrichments` | Foursquare-enriched building metadata table |
+| `…000001` | `quest_schema` | 7 `quest_*` tables + RPCs + RLS |
+| `…000002` | `seed_quest_content` | Seed 2 hunts + 12 clues |
+| `…000003` | `results_cards_bucket` | Storage bucket for end-of-hunt PNGs |
+| `…000004` | `quest_photos_bucket` | Storage bucket for player photos |
+| `…000005` | `abandon_idle_sessions` | `pg_cron` job to mark idle sessions abandoned |
+| `…000006` | `remove_auth_use_device_id` | Drop `auth.uid()`, switch RPCs to `p_user_id` |
 
-4. Rename `.env.example` to `.env.local` and update the following:
+Live status of each migration is tracked in `HANDOVER.md`.
 
-  ```env
-  NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
-  ```
-  > [!NOTE]
-  > This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
-  > Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
-  > See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
+### 4. Run
 
-  Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
+```bash
+npm run dev
+```
 
-5. You can now run the Next.js local development server:
+Open <http://localhost:3000/quest/demo> in **Firefox** with the responsive mobile visualiser set to **iPhone 14 / 15 / 16** (390–430px wide, portrait).
 
-   ```bash
-   npm run dev
-   ```
+---
 
-   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
+## Repo structure
 
-6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
+```
+app/
+  api/rooms/free/        # Free-Rooms API (campus building data)
+  quest/                 # Player frontend
+    demo/[huntSlug]/     # Hunt runtime (lobby, play, finale, standings)
+    _components/         # Phone frame, reticle
+    _screens/            # Reusable clue/qr/photo/leaderboard screens
+    _registry.ts         # Screen + variant registry
+    quest.css            # Quest-specific styling
+components/              # Shared UI (shadcn/ui)
+lib/
+  device-id.{ts,server.ts}   # Anonymous device identity (cookie-based)
+  foursquare/                # Foursquare Places API client
+  freerooms/                 # UNSW Freerooms client
+  rooms/                     # Free-room aggregation logic
+  supabase/                  # Supabase clients (browser, server, admin)
+proxy.ts                 # Next.js 16 middleware (sets quest_device_id cookie)
+supabase/
+  functions/generate_results_card/    # Edge fn — renders 9:16 PNG (satori + resvg-wasm)
+  migrations/                          # SQL migrations
+scripts/
+  enrich-buildings.ts    # Foursquare backfill for building_enrichments
+docs/unsw-quest/         # PRD, spec sheet, content, handover
+design/unsw-quest/       # Wireframes
+```
 
-> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
+---
 
-## Feedback and issues
+## Stack
 
-Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
+| Layer | Tech |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, Tailwind, shadcn/ui |
+| Identity | Device-id UUID in cookie, set by `proxy.ts` (no auth in MVP) |
+| Backend | Supabase Postgres + Storage + Realtime |
+| Server logic | Supabase Edge Functions (Deno), Postgres RPCs |
+| Results card | `satori` + `resvg-wasm` rendering 9:16 PNG server-side |
+| Hosting | Vercel (intended) |
+| Tests | Vitest |
 
-## More Supabase examples
+---
 
-- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
-- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
-- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Local dev server |
+| `npm run build` | Production build |
+| `npm run start` | Run prod build |
+| `npm run lint` | ESLint |
+| `npm test` | Vitest (watch) |
+| `npm run test:run` | Vitest (single pass) |
+| `npm run enrich` | Backfill `building_enrichments` via Foursquare |
+
+---
+
+## Contributing notes
+
+- The PRD and the spec sheet sometimes disagree — when they do, **the spec sheet wins** (it captures the hackathon MVP pivot: Kahoot-style join, anagram + geocache puzzles, individual play, no GPS verification).
+- Auth is intentionally absent. Identity = `quest_device_id` cookie. Don't reintroduce `auth.uid()` in RPCs.
+- The current `/app/quest/*` code still reflects the older team/GPS model in places. Reconciling it with the spec sheet's MVP flow is open work — see HANDOVER.
+
+---
+
+*UNSW Quest — DevSoc Halftime Hackathon 2026.*
