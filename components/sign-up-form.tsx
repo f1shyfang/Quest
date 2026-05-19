@@ -45,20 +45,38 @@ export function SignUpForm() {
       return;
     }
 
-    // If the project has email confirmation off, signUp returns a session and the
-    // user is already logged in — go straight to the demo. Otherwise, attempt a
-    // password sign-in; if that fails it means confirmation is required.
+    // If the project has email confirmation OFF, signUp returns a session and the
+    // user is already logged in — go straight to the demo.
     if (data.session) {
       router.push(next);
       return;
     }
 
-    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInErr) {
-      // Most common case: email confirmation is enabled in Supabase Auth.
+    // Email confirmation IS on. Supabase signals this by returning a user with
+    // an empty `identities` array (when the email already existed it'll be
+    // populated; we use confirmation_sent_at as a fallback heuristic). Don't
+    // waste a second round-trip on signInWithPassword that we already know
+    // will fail — just tell the user to check their inbox.
+    const userObj = data.user as unknown as {
+      identities?: unknown[];
+      confirmation_sent_at?: string;
+    } | null;
+    const confirmationPending =
+      !!userObj?.confirmation_sent_at ||
+      (Array.isArray(userObj?.identities) && userObj!.identities!.length === 0);
+
+    if (confirmationPending) {
       setInfo(
         "Account created. Check your inbox for a confirmation link — once you tap it, you'll be sent into the hunt.",
       );
+      setIsLoading(false);
+      return;
+    }
+
+    // Edge case: no session and no confirmation marker. Try password sign-in.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInErr) {
+      setError(signInErr.message);
       setIsLoading(false);
       return;
     }
