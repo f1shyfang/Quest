@@ -88,6 +88,26 @@ describe("GET /api/rooms/free", () => {
     expect(body).toEqual({ error: "rooms_service_unavailable" });
   });
 
+  it("returns 400 when only near_lat is set", async () => {
+    const res = await GET(makeReq("?near_lat=-33.9"));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBeDefined();
+    const blob = JSON.stringify(body);
+    expect(blob).toContain("near_lat");
+    expect(blob).toContain("near_lng");
+  });
+
+  it("returns 400 when only near_lng is set", async () => {
+    const res = await GET(makeReq("?near_lng=151.2"));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBeDefined();
+    const blob = JSON.stringify(body);
+    expect(blob).toContain("near_lat");
+    expect(blob).toContain("near_lng");
+  });
+
   it("passes parsed params through to getFreeRooms", async () => {
     await GET(
       makeReq(

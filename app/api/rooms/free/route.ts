@@ -42,7 +42,8 @@ const VALID_STATUSES = new Set(["free", "soon", "all"]);
 
 type ParsedParams =
   | { ok: true; value: GetFreeRoomsParams }
-  | { ok: false; param: string };
+  | { ok: false; param: string }
+  | { ok: false; pair: "near_lat_lng" };
 
 function parseParams(url: URL): ParsedParams {
   const params: GetFreeRoomsParams = {};
@@ -85,6 +86,9 @@ function parseParams(url: URL): ParsedParams {
 
   const nearLat = q.get("near_lat");
   const nearLng = q.get("near_lng");
+  if ((nearLat === null) !== (nearLng === null)) {
+    return { ok: false, pair: "near_lat_lng" };
+  }
   if (nearLat !== null) {
     const n = Number(nearLat);
     if (!Number.isFinite(n)) return { ok: false, param: "near_lat" };
@@ -103,6 +107,17 @@ export async function GET(req: Request): Promise<Response> {
   const url = new URL(req.url);
   const parsed = parseParams(url);
   if (!parsed.ok) {
+    if ("pair" in parsed) {
+      return Response.json(
+        {
+          error: "invalid_param_pair",
+          message:
+            "near_lat and near_lng must be provided together (both set, or neither).",
+          params: ["near_lat", "near_lng"],
+        },
+        { status: 400 },
+      );
+    }
     return Response.json(
       { error: "invalid_param", param: parsed.param },
       { status: 400 },
