@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PlayShell } from "./play-shell";
+import { Crumbs } from "../../_components/Crumbs";
 import type { Hunt, Clue, Session, TeamSummary, MemberRow, ProgressRow } from "./types";
 
 export const metadata = { title: "UNSW Quest · Play" };
@@ -120,13 +120,13 @@ export default async function PlayPage({
       clues={(clues ?? []) as Clue[]}
       initialProgress={(progress ?? []) as ProgressRow[]}
       headerSlot={
-        <div className="crumbs" style={{ marginBottom: 8 }}>
-          <Link href="/quest/demo">demo</Link>
-          <span className="sep">/</span>
-          <Link href={`/quest/demo/${huntSlug}`}>{hunt.slug}</Link>
-          <span className="sep">/</span>
-          <span>play</span>
-        </div>
+        <Crumbs
+          items={[
+            { key: "demo", href: "/quest/demo", label: "demo" },
+            { key: "hunt", href: `/quest/demo/${huntSlug}`, label: hunt.slug },
+            { key: "play", label: "play" },
+          ]}
+        />
       }
     />
   );

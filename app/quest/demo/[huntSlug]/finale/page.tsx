@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Phone } from "../../../_components/Phone";
+import { Crumbs } from "../../_components/Crumbs";
 
 export const metadata = { title: "UNSW Quest · Finale" };
 
@@ -82,13 +83,13 @@ export default async function FinalePage({
 
   return (
     <div className="viewer" style={{ gap: 16 }}>
-      <div className="crumbs">
-        <Link href="/quest/demo">demo</Link>
-        <span className="sep">/</span>
-        <Link href={`/quest/demo/${huntSlug}`}>{hunt.slug}</Link>
-        <span className="sep">/</span>
-        <span>finale</span>
-      </div>
+      <Crumbs
+        items={[
+          { key: "demo", href: "/quest/demo", label: "demo" },
+          { key: "hunt", href: `/quest/demo/${huntSlug}`, label: hunt.slug },
+          { key: "finale", label: "finale" },
+        ]}
+      />
 
       <Phone>
         <div className="body">
