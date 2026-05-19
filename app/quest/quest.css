@@ -476,3 +476,57 @@
 @media (max-width: 520px) {
   .quest-root .index-section .tiles { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ------------ Leaflet map (clean CARTO Positron tiles) ------------ */
+.quest-root .quest-leaflet { isolation: isolate; }
+.quest-root .quest-leaflet .leaflet-tile-pane {
+  filter: saturate(0.85) brightness(1.02);
+}
+.quest-root .quest-leaflet .leaflet-container {
+  background: #f3eee0;
+  font-family: var(--ui);
+}
+.quest-root .quest-leaflet .leaflet-control-attribution {
+  background: rgba(251, 247, 236, 0.78);
+  color: var(--quest-muted);
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px 0 0 0;
+}
+.quest-root .quest-leaflet .leaflet-control-attribution a {
+  color: var(--accent);
+}
+
+.quest-root .quest-checkpoint-label {
+  pointer-events: none;
+}
+.quest-root .quest-checkpoint-label__inner {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  transform: translate(-50%, 0);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1.4px solid var(--ink);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--hand);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 1px 2px 0 rgba(26, 26, 34, 0.12);
+}
+
+.quest-root .quest-player-dot {
+  pointer-events: none;
+}
+.quest-root .quest-player-dot__inner {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fbf7ec;
+  margin: 3px;
+  box-shadow: 0 0 0 4px rgba(239, 91, 58, 0.25);
+}

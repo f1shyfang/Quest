@@ -11,6 +11,7 @@ import { haversineM } from "./geo";
 import { QRScanner } from "./QRScanner";
 import { QuestIcon } from "../../../_components/QuestIcon";
 import { InviteQRModal } from "./InviteQRModal";
+import { LeafletMap } from "./LeafletMap";
 
 type Props = {
   hunt: Hunt;
@@ -867,7 +868,15 @@ function ActiveView({
       </div>
 
       {/* MAP DRAWER */}
-      {mapOpen ? <MapDrawer clue={clue} distanceM={distanceM} accuracy={coords?.accuracy ?? null} onClose={() => setMapOpen(false)} /> : null}
+      {mapOpen ? (
+        <MapDrawer
+          clue={clue}
+          distanceM={distanceM}
+          accuracy={coords?.accuracy ?? null}
+          playerCoords={coords ? { lat: coords.lat, lng: coords.lng } : null}
+          onClose={() => setMapOpen(false)}
+        />
+      ) : null}
 
       {/* QR SCANNER */}
       {qrScannerOpen && isQRClue && clue.qr_code_payload ? (
@@ -963,13 +972,19 @@ function MapDrawer({
   clue,
   distanceM,
   accuracy,
+  playerCoords,
   onClose,
 }: {
   clue: Clue;
   distanceM: number | null;
   accuracy: number | null;
+  playerCoords: { lat: number; lng: number } | null;
   onClose: () => void;
 }) {
+  const hasCheckpointCoords = clue.location_lat != null && clue.location_lng != null;
+  const checkpoint = hasCheckpointCoords
+    ? { lat: Number(clue.location_lat), lng: Number(clue.location_lng) }
+    : null;
   return (
     <div
       style={{
@@ -997,34 +1012,29 @@ function MapDrawer({
           <div className="label">MAP · {clue.location_name}</div>
           <button onClick={onClose} className="pill ghost">close</button>
         </div>
-        <div style={{ position: "relative", height: 220, marginBottom: 12 }}>
-          <div className="ph-box map" style={{ position: "absolute", inset: 0, borderRadius: 14 }} />
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%,-50%)",
-              width: 120,
-              height: 120,
-              border: "2.2px dashed var(--accent)",
-              borderRadius: "50%",
-              background: "rgba(239,91,58,0.1)",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: "50%",
-              top: "50%",
-              transform: "translate(-50%,-50%)",
-              width: 10,
-              height: 10,
-              background: "var(--accent)",
-              border: "2px solid white",
-              borderRadius: "50%",
-            }}
-          />
+        <div style={{ position: "relative", height: 240, marginBottom: 12 }}>
+          {checkpoint ? (
+            <LeafletMap
+              checkpoint={checkpoint}
+              player={playerCoords}
+              geofenceRadiusM={clue.geofence_radius_m ?? 25}
+              accuracyM={accuracy}
+              locationName={clue.location_name}
+            />
+          ) : (
+            <div
+              className="ph-box map"
+              style={{
+                position: "absolute",
+                inset: 0,
+                borderRadius: 14,
+                padding: 16,
+                textAlign: "center",
+              }}
+            >
+              checkpoint coordinates missing
+            </div>
+          )}
         </div>
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div className="hand" style={{ fontSize: 18 }}>
