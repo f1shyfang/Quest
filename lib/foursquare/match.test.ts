@@ -58,3 +58,39 @@ describe("classifyConfidence", () => {
     expect(classifyConfidence(0.95, 80)).toBe("low");
   });
 });
+
+import { pickBestCandidate, type ScoredCandidate } from "./match";
+
+describe("pickBestCandidate", () => {
+  const c = (
+    id: string,
+    name: string,
+    nameScore: number,
+    distance: number,
+  ): ScoredCandidate => ({ id, name, nameScore, distanceMeters: distance });
+
+  it("returns null when given no candidates", () => {
+    expect(pickBestCandidate([])).toBeNull();
+  });
+
+  it("picks the higher nameScore even if it is farther", () => {
+    const best = pickBestCandidate([
+      c("a", "Foo", 0.5, 10),
+      c("b", "Foo", 0.9, 80),
+    ]);
+    expect(best?.id).toBe("b");
+  });
+
+  it("breaks ties on nameScore by picking the closer candidate", () => {
+    const best = pickBestCandidate([
+      c("a", "Foo", 0.8, 60),
+      c("b", "Foo", 0.8, 20),
+    ]);
+    expect(best?.id).toBe("b");
+  });
+
+  it("returns the single candidate when there is only one", () => {
+    const only = c("only", "Foo", 0.4, 200);
+    expect(pickBestCandidate([only])).toEqual(only);
+  });
+});

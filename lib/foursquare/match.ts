@@ -48,3 +48,24 @@ export function classifyConfidence(
   if (nameScore >= 0.6 && distanceMeters <= 50) return "medium";
   return "low";
 }
+
+export type ScoredCandidate = {
+  id: string;
+  name: string;
+  nameScore: number;
+  distanceMeters: number;
+};
+
+/**
+ * Picks the candidate with the highest name score, breaking ties by proximity.
+ * Returns null when given an empty list.
+ */
+export function pickBestCandidate(
+  candidates: ScoredCandidate[],
+): ScoredCandidate | null {
+  if (candidates.length === 0) return null;
+  return [...candidates].sort((a, b) => {
+    if (b.nameScore !== a.nameScore) return b.nameScore - a.nameScore;
+    return a.distanceMeters - b.distanceMeters;
+  })[0];
+}
