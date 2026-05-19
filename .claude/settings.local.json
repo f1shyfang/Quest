@@ -7,7 +7,25 @@
       "Bash(git -C /mnt/d/Documents/devsoc_halftime ls-files --stage)",
       "Bash(git -C /mnt/d/Documents/devsoc_halftime config --file .gitmodules --get-regexp '.*')",
       "Bash(rmdir /mnt/d/Documents/devsoc_halftime/.claude/hooks)",
-      "Bash(git -C /mnt/d/Documents/devsoc_halftime status)"
+      "Bash(git -C /mnt/d/Documents/devsoc_halftime status)",
+      "WebSearch",
+      "WebFetch(domain:devsoc.atlassian.net)",
+      "WebFetch(domain:github.com)",
+      "Bash(git *)",
+      "Bash(npm install *)",
+      "Bash(npm --version)",
+      "Bash(npm run *)",
+      "Bash(echo \"EXIT_CODE: $?\")",
+      "Bash(npx tsc *)",
+      "Bash(node -e \"import\\('vitest/config'\\).catch\\(\\(\\)=>{}\\)\")",
+      "Bash(node *)",
+      "Bash(npx vitest *)",
+      "Bash(npx eslint *)",
+      "Bash(claude mcp *)",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__execute_sql"
     ]
   },
   "enabledMcpjsonServers": [
