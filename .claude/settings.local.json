@@ -22,6 +22,8 @@
       "Bash(npx vitest *)",
       "Bash(npx eslint *)",
       "Bash(claude mcp *)",
+      "Bash(curl -s http://localhost:3000/quest)",
+      "Bash(curl *)",
       "mcp__supabase__list_migrations",
       "mcp__supabase__list_tables",
       "mcp__supabase__apply_migration",

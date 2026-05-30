@@ -41,3 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/skills/gstack/
+.gstack/
+
+# claude worktrees (separate experiments, not part of this repo)
+.claude/worktrees/
