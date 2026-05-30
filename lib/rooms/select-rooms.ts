@@ -38,7 +38,8 @@ export function selectRoomsForHunt(
   if (opts.nearLat !== undefined && opts.nearLng !== undefined) {
     const lat = opts.nearLat;
     const lng = opts.nearLng;
-    pool = [...pool].sort(
+    // `pool` is already a fresh array from the filters above, so sort in place.
+    pool.sort(
       (a, b) =>
         haversineMeters(lat, lng, a.building.lat, a.building.lng) -
         haversineMeters(lat, lng, b.building.lat, b.building.lng),

@@ -58,6 +58,16 @@ describe("selectRoomsForHunt", () => {
     expect(result!.rooms.map((r) => r.building.id)).toEqual(["K-A", "K-B"]);
   });
 
+  it("keeps multiple rooms per building when dedupeByBuilding is false", () => {
+    const rooms = [
+      room({ id: "A1", buildingId: "K-A" }),
+      room({ id: "A2", buildingId: "K-A" }),
+      room({ id: "B1", buildingId: "K-B" }),
+    ];
+    const result = selectRoomsForHunt(rooms, { count: 5, dedupeByBuilding: false });
+    expect(result!.rooms.map((r) => r.room_id)).toEqual(["A1", "A2", "B1"]);
+  });
+
   it("sorts by proximity when near coords are given", () => {
     const rooms = [
       room({ id: "FAR", buildingId: "K-FAR", building: { id: "K-FAR", name: "", lat: -33.95, lng: 151.25, photo_url: null, address: null } }),
