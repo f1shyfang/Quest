@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { postJson, uploadViaApi } from "@/lib/api/fetcher";
 import { getStoredPlayerId } from "@/lib/mvp/player-storage";
 import type { MvpPlayerState } from "@/lib/mvp/types";
 import { MvpCodeScanner } from "./MvpCodeScanner";
@@ -17,7 +17,6 @@ function formatClock(sec: number) {
 
 export function MvpPlayShell() {
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const [state, setState] = useState<MvpPlayerState | null>(null);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -30,19 +29,15 @@ export function MvpPlayShell() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const refresh = useCallback(
-    async (playerId: string) => {
-      const { data, error } = await supabase.rpc("mvp_get_player_state", {
-        p_player_id: playerId,
-      });
-      if (error) {
-        setLoadErr(error.message);
-        return;
-      }
-      setState(data as MvpPlayerState);
-    },
-    [supabase],
-  );
+  const refresh = useCallback(async (playerId: string) => {
+    const res = await fetch(`/api/mvp/players/${playerId}/state`);
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !json) {
+      setLoadErr((json && json.error) || "Could not load");
+      return;
+    }
+    setState(json as MvpPlayerState);
+  }, []);
 
   useEffect(() => {
     const playerId = getStoredPlayerId();
@@ -80,13 +75,13 @@ export function MvpPlayShell() {
   const confirmStart = async () => {
     const playerId = getStoredPlayerId();
     if (!playerId) return;
-    await runRpc(supabase.rpc("mvp_confirm_start", { p_player_id: playerId }));
+    await runRpc(postJson(`/api/mvp/players/${playerId}/confirm-start`));
   };
 
   const ackWalk = async () => {
     const playerId = getStoredPlayerId();
     if (!playerId) return;
-    await runRpc(supabase.rpc("mvp_ack_walk", { p_player_id: playerId }));
+    await runRpc(postJson(`/api/mvp/players/${playerId}/ack-walk`));
   };
 
   const submitAnagram = async () => {
@@ -94,11 +89,7 @@ export function MvpPlayShell() {
     if (!playerId || !state?.puzzle?.id) return;
     setAnagramErr(null);
     const result = await runRpc(
-      supabase.rpc("mvp_submit_anagram", {
-        p_player_id: playerId,
-        p_puzzle_id: state.puzzle!.id,
-        p_input: anagramInput,
-      }),
+      postJson(`/api/mvp/players/${playerId}/anagram`, { puzzleId: state.puzzle!.id, input: anagramInput }),
     );
     if (result?.ok === false) {
       setAnagramErr(result.message ?? "Try again.");
@@ -113,11 +104,7 @@ export function MvpPlayShell() {
     setGeocodeErr(null);
     setShowScanner(false);
     const result = await runRpc(
-      supabase.rpc("mvp_submit_geocache_code", {
-        p_player_id: playerId,
-        p_puzzle_id: state.puzzle!.id,
-        p_code: code,
-      }),
+      postJson(`/api/mvp/players/${playerId}/geocache`, { puzzleId: state.puzzle!.id, code }),
     );
     if (result?.ok === false) {
       setGeocodeErr(result.message ?? "Code did not match.");
@@ -128,12 +115,7 @@ export function MvpPlayShell() {
     const playerId = getStoredPlayerId();
     if (!playerId || !state?.puzzle?.id) return;
     await runRpc(
-      supabase.rpc("mvp_record_photo", {
-        p_player_id: playerId,
-        p_puzzle_id: state.puzzle!.id,
-        p_photo_url: null,
-        p_skipped: true,
-      }),
+      postJson(`/api/mvp/players/${playerId}/photo`, { puzzleId: state.puzzle!.id, photoUrl: null, skipped: true }),
     );
   };
 
@@ -184,20 +166,12 @@ export function MvpPlayShell() {
       );
       if (!blob) throw new Error("could not capture");
 
-      const path = `mvp/${playerId}/${state.puzzle.id}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from("quest-photos")
-        .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
-      if (upErr) throw upErr;
-
-      const { data: urlData } = supabase.storage.from("quest-photos").getPublicUrl(path);
-
+      const url = await uploadViaApi(blob);
       await runRpc(
-        supabase.rpc("mvp_record_photo", {
-          p_player_id: playerId,
-          p_puzzle_id: state.puzzle!.id,
-          p_photo_url: urlData.publicUrl,
-          p_skipped: false,
+        postJson(`/api/mvp/players/${playerId}/photo`, {
+          puzzleId: state.puzzle!.id,
+          photoUrl: url,
+          skipped: false,
         }),
       );
     } catch (e) {

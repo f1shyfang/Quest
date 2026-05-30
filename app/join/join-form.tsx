@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { postJson } from "@/lib/api/fetcher";
 import { getStoredPlayerId, setStoredPlayerId } from "@/lib/mvp/player-storage";
 import type { MvpPlayerState } from "@/lib/mvp/types";
 
@@ -26,20 +26,18 @@ export function JoinForm({
     }
     setBusy(true);
     setError(null);
-    const supabase = createClient();
     const existing = getStoredPlayerId();
-    const { data, error: rpcErr } = await supabase.rpc("mvp_join_game", {
-      p_game_id: gameId,
-      p_name: trimmed,
-      p_existing_player_id: existing,
+    const { data, error: rpcErr } = await postJson<MvpPlayerState>("/api/mvp/join", {
+      gameId,
+      name: trimmed,
+      existingPlayerId: existing,
     });
     setBusy(false);
-    if (rpcErr) {
-      setError(rpcErr.message);
+    if (rpcErr || !data) {
+      setError(rpcErr?.message ?? "Could not join");
       return;
     }
-    const state = data as MvpPlayerState;
-    setStoredPlayerId(state.player_id);
+    setStoredPlayerId(data.player_id);
     router.push("/play");
   };
 

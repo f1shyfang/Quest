@@ -11,7 +11,9 @@ import {
   type ScoredCandidate,
 } from "../lib/foursquare/match";
 import { createFreeroomsClient, type FreeroomsClient } from "../lib/freerooms/client";
-import { createAdminClient } from "../lib/supabase/admin";
+import { db } from "../lib/db/client";
+import { buildingEnrichments } from "../lib/db/schema";
+import { sql } from "drizzle-orm";
 
 const SEARCH_RADIUS_M = 100;
 const SEARCH_LIMIT = 5;
@@ -184,27 +186,50 @@ function assertEnv(name: string): string {
 }
 
 async function main(): Promise<void> {
-  assertEnv("NEXT_PUBLIC_SUPABASE_URL");
-  assertEnv("SUPABASE_SERVICE_ROLE_KEY");
+  assertEnv("DATABASE_URL");
   const apiKey = assertEnv("FOURSQUARE_API_KEY");
 
   const freerooms = createFreeroomsClient();
   const foursquare = createFoursquareClient({ apiKey });
-  const admin = createAdminClient();
 
   const supabase: EnrichmentSupabase = {
     async fetchExistingMethods() {
-      const { data, error } = await admin
-        .from("building_enrichments")
-        .select("building_id, match_method");
-      if (error) throw error;
-      return data ?? [];
+      return db
+        .select({
+          building_id: buildingEnrichments.buildingId,
+          match_method: buildingEnrichments.matchMethod,
+        })
+        .from(buildingEnrichments);
     },
     async upsertEnrichment(row) {
-      const { error } = await admin
-        .from("building_enrichments")
-        .upsert(row, { onConflict: "building_id" });
-      return { error };
+      try {
+        await db
+          .insert(buildingEnrichments)
+          .values({
+            buildingId: row.building_id,
+            buildingName: row.building_name,
+            foursquarePlaceId: row.foursquare_place_id,
+            photoUrl: row.photo_url,
+            address: row.address,
+            matchConfidence: row.match_confidence,
+            matchMethod: row.match_method,
+          })
+          .onConflictDoUpdate({
+            target: buildingEnrichments.buildingId,
+            set: {
+              buildingName: row.building_name,
+              foursquarePlaceId: row.foursquare_place_id,
+              photoUrl: row.photo_url,
+              address: row.address,
+              matchConfidence: row.match_confidence,
+              matchMethod: row.match_method,
+              enrichedAt: sql`now()`,
+            },
+          });
+        return { error: null };
+      } catch (error) {
+        return { error };
+      }
     },
   };
 

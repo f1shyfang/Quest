@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { getDeviceIdClient } from "@/lib/device-id";
+import { postJson } from "@/lib/api/fetcher";
 
 export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: string }) {
   const router = useRouter();
@@ -20,14 +19,12 @@ export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: strin
   const create = async () => {
     setBusy(true);
     setError(null);
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc("quest_create_team", {
-      p_user_id: getDeviceIdClient(),
-      p_hunt_id: huntId,
-      p_team_name: teamName.trim() || undefined,
-    });
+    const { data, error } = await postJson<{ team_id: string; invite_code: string; session_id: string }>(
+      "/api/quest/teams/create",
+      { huntId, teamName: teamName.trim() || undefined },
+    );
     setBusy(false);
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       setError(error?.message ?? "Could not create team");
       return;
     }
@@ -37,19 +34,18 @@ export function TeamGate({ huntId, huntSlug }: { huntId: string; huntSlug: strin
   const join = async () => {
     setBusy(true);
     setError(null);
-    const supabase = createClient();
     const code = inviteCode.trim().toUpperCase();
     if (code.length !== 6) {
       setError("Invite codes are 6 characters.");
       setBusy(false);
       return;
     }
-    const { data, error } = await supabase.rpc("quest_join_team", {
-      p_user_id: getDeviceIdClient(),
-      p_invite_code: code,
-    });
+    const { data, error } = await postJson<{ team_id: string; hunt_id: string }>(
+      "/api/quest/teams/join",
+      { inviteCode: code },
+    );
     setBusy(false);
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       setError(error?.message ?? "Could not join team");
       return;
     }
