@@ -823,14 +823,17 @@ function ActiveView({
             ) : null}
           </>
         )}
-        {showOverride && (isQRClue || !withinGeofence) ? (
+        {/* Manual skip. Normally gated behind the 2-min dwell (no premature
+            escape hatch), but if geolocation is denied/unavailable the player
+            is otherwise fully blocked — so surface it immediately. */}
+        {(showOverride || gpsErr) && (isQRClue || !withinGeofence) ? (
           <button
             className="btn ghost"
             onClick={() => unlock({ manualOverride: true })}
             disabled={busy}
             style={{ width: "100%" }}
           >
-            Stuck? Mark as arrived
+            {gpsErr ? "Location unavailable · skip & mark as arrived" : "Stuck? Mark as arrived"}
           </button>
         ) : null}
       </article>
