@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db/client";
+import { callRpcOne } from "@/lib/db/rpc";
+import { questHunts, questProfiles, questTeamMembers, questTeams } from "@/lib/db/schema";
+import { asc, eq, inArray } from "drizzle-orm";
 import { getDeviceIdServer } from "@/lib/device-id.server";
 import { OnboardingCarousel } from "./_components/OnboardingCarousel";
 import { QuestIcon, emojiToIcon, type IconName } from "../_components/QuestIcon";
@@ -15,50 +18,74 @@ const COMING_SOON: Array<{ icon: IconName; name: string; blurb: string; eta: str
 export const metadata = { title: "UNSW Quest · Pick a hunt" };
 
 export default async function DemoHomePage() {
-  const supabase = await createClient();
   const deviceId = await getDeviceIdServer();
 
   // Make sure the player has a quest profile.
-  await supabase.rpc("quest_ensure_profile", {
-    p_user_id: deviceId,
-    p_display_name: "",
-  });
+  await callRpcOne("quest_ensure_profile", [deviceId, ""]);
 
   // Pull the profile so we can show the real display name in the footer.
-  const { data: profile } = await supabase
-    .from("quest_profiles")
-    .select("display_name, avatar_color")
-    .eq("user_id", deviceId)
-    .maybeSingle();
+  const profile =
+    (
+      await db
+        .select({ display_name: questProfiles.displayName, avatar_color: questProfiles.avatarColor })
+        .from(questProfiles)
+        .where(eq(questProfiles.userId, deviceId))
+        .limit(1)
+    )[0] ?? null;
 
-  const { data: hunts, error } = await supabase
-    .from("quest_hunts")
-    .select("*")
-    .eq("status", "published")
-    .order("created_at", { ascending: true });
-
-  if (error) {
+  let hunts: Array<{
+    id: string;
+    slug: string;
+    name: string;
+    description: string | null;
+    duration_minutes: number | null;
+    recommended_team_size: string | null;
+    hero_emoji: string | null;
+    status: string;
+    created_at: string;
+  }>;
+  try {
+    hunts = await db
+      .select({
+        id: questHunts.id,
+        slug: questHunts.slug,
+        name: questHunts.name,
+        description: questHunts.description,
+        duration_minutes: questHunts.durationMinutes,
+        recommended_team_size: questHunts.recommendedTeamSize,
+        hero_emoji: questHunts.heroEmoji,
+        status: questHunts.status,
+        created_at: questHunts.createdAt,
+      })
+      .from(questHunts)
+      .where(eq(questHunts.status, "published"))
+      .orderBy(asc(questHunts.createdAt));
+  } catch (e) {
     return (
       <div className="viewer">
         <div className="hand" style={{ fontSize: 24 }}>Could not load hunts</div>
-        <div className="muted small">{error.message}</div>
+        <div className="muted small">{e instanceof Error ? e.message : "error"}</div>
       </div>
     );
   }
 
   // Find any active session this user is already part of so we can offer "resume".
-  // Two-step (no nested joins) to sidestep RLS join quirks.
-  const { data: memberships } = await supabase
-    .from("quest_team_members")
-    .select("team_id")
-    .eq("user_id", deviceId);
-  const teamIds = (memberships ?? []).map((m) => m.team_id);
-  const { data: myTeams } = teamIds.length
-    ? await supabase
-        .from("quest_teams")
-        .select("id, hunt_id, name, invite_code")
-        .in("id", teamIds)
-    : { data: [] };
+  const memberships = await db
+    .select({ team_id: questTeamMembers.teamId })
+    .from(questTeamMembers)
+    .where(eq(questTeamMembers.userId, deviceId));
+  const teamIds = memberships.map((m) => m.team_id);
+  const myTeams = teamIds.length
+    ? await db
+        .select({
+          id: questTeams.id,
+          hunt_id: questTeams.huntId,
+          name: questTeams.name,
+          invite_code: questTeams.inviteCode,
+        })
+        .from(questTeams)
+        .where(inArray(questTeams.id, teamIds))
+    : [];
   const huntSlugById = new Map((hunts ?? []).map((h) => [h.id, h.slug]));
   const activeByHuntId = new Map<string, { teamName: string; code: string; huntSlug: string }>();
   for (const t of myTeams ?? []) {
