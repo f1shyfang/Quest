@@ -33,7 +33,8 @@ export type BuildRoomHuntOpts = {
  * Turn a list of selected free rooms into a hunt draft (no I/O). Each room
  * becomes one GPS-verified riddle clue anchored to its building coordinates
  * (Freerooms gives building-level coords only). Rooms are chunked into tiers of
- * at most 9 to satisfy quest_clues constraints (tier 1-3, sequence 1-9).
+ * at most 9 (sequence_in_tier 1-9). Keeping tier within 1-3 is the caller's job:
+ * the route caps the room count at 27 so generated tiers never exceed 3.
  */
 export function buildRoomHuntDraft(
   selected: FreeRoomRecord[],
