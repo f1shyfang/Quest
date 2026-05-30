@@ -73,7 +73,7 @@ All server-side. Now documented in `.env.example`:
 ## Architectural decisions to know
 
 ### 1. Supabase is fully removed from the runtime
-Nothing imports it. The `supabase/` directory (`config.toml` + 13 historical migrations dated May 19–20) is kept **only** for historical reference / migration reproducibility. There are no remaining Supabase SDK imports in `lib`, `app`, or `scripts`. A few code comments still mention Supabase historically (e.g. the `proxy.ts` header, `app/quest/.../play/types.ts`, `app/api/quest/progress/photo/route.ts`) — harmless notes, not live dependencies. `scripts/db/clean-schema-dump.md` records exactly how the Neon `public` schema was produced from the live Supabase DB (pg_dump via session pooler, RLS/policy stripping, dropping orphan `auth.uid()` functions).
+Nothing imports it. The Supabase scaffolding has been removed: the `supabase/` directory (`config.toml` + 13 historical migrations), the `with-supabase` starter `components/` tree, the legacy `.env.local` vars, and the unused Supabase-only npm deps are all gone. The retired migrations remain recoverable in git history. There are no remaining Supabase SDK imports in `lib`, `app`, or `scripts`. A few code comments still mention Supabase historically (e.g. the `proxy.ts` header, `app/quest/.../play/types.ts`, `app/api/quest/progress/photo/route.ts`) — harmless notes that explain the new architecture, not live dependencies. `scripts/db/clean-schema-dump.md` records exactly how the Neon `public` schema was produced from the live Supabase DB (pg_dump via session pooler, RLS/policy stripping, dropping orphan `auth.uid()` functions).
 
 ### 2. No auth, no RLS (demo trade-off)
 Access is trusted server-side — route handlers read the device-id from the cookie and pass it into the functions; row access is not restricted. **Don't put sensitive data in these tables.** If the project goes past the demo, reintroducing a real auth/authorization model is the first hardening step.
@@ -94,7 +94,7 @@ Access is trusted server-side — route handlers read the device-id from the coo
 
 The app runs — these are nice-to-haves, not blockers.
 
-1. **Cleanup (optional)** — delete the legacy Supabase env vars from `.env.local`, and consider removing the `supabase/` directory once the migration record is no longer needed.
+1. **Cleanup** — ✅ done. Legacy Supabase env vars, the `supabase/` directory, the orphaned `components/` starter tree, and unused Supabase-only npm deps have all been removed.
 2. **Player-name UX** — the quest demo still shows the raw device-id rather than a display name. Open from before the migration.
 4. **UNSW-verified badge has no signal source** — email is gone. Drop it or design a new mechanism if it ever surfaces in UI.
 5. **Buildings backfill** — run if/when the Free-Rooms API is surfaced in the UI: `npm run enrich`.
@@ -131,7 +131,7 @@ db/neon-setup.sql                                 # one-time role search_path se
 db/drizzle/                                        # drizzle-kit DDL (0000_living_wallow.sql)
 scripts/enrich-buildings.ts                       # Buildings backfill (npm run enrich)
 scripts/db/clean-schema-dump.md                   # How the Neon schema was produced
-supabase/                                          # Legacy / historical only — nothing imports it
+db/seed-quest-unsw101-expansion.sql               # Extra UNSW 101 clues (apply via psql)
 docs/unsw-quest/PRD_v1.md                          # Product spec
 docs/unsw-quest/clue_content_v1.md                # Canonical clue copy
 ```

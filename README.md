@@ -122,10 +122,10 @@ db/
   schema (via lib/db/schema.ts), drizzle/   # drizzle-kit migration output
   functions.sql            # 19 Postgres functions (quest_* / mvp_*)
   neon-setup.sql           # one-time role search_path setup
+  seed-quest-unsw101-expansion.sql  # extra UNSW 101 clues — apply via psql
 scripts/
   enrich-buildings.ts      # Foursquare backfill for building_enrichments
   db/clean-schema-dump.md  # how the Neon schema was produced from Supabase (migration record)
-supabase/                  # LEGACY — old migrations + config kept for historical reference only; not used at runtime
 docs/unsw-quest/           # PRD, spec sheet, content, handover
 design/unsw-quest/         # Wireframes
 ```
@@ -136,7 +136,7 @@ design/unsw-quest/         # Wireframes
 
 | Layer | Tech |
 |---|---|
-| Frontend | Next.js 16 (App Router), React 19, Tailwind, shadcn/ui, SWR (client-side polling) |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind, custom components (`app/quest/_components`), SWR (client-side polling) |
 | Database | Neon Postgres via the `@neondatabase/serverless` HTTP driver + Drizzle ORM — client at `lib/db/client.ts`, schema at `lib/db/schema.ts` (13 tables + 1 view) |
 | Server logic | 19 Postgres functions ("RPCs") in `db/functions.sql`, invoked from route handlers via `callRpcOne` / `callRpcRows` in `lib/db/rpc.ts`; reads that don't need a function go through Drizzle directly |
 | Storage | Vercel Blob (`@vercel/blob`) — helper `lib/blob/upload.ts` (`uploadPublic`), endpoint `POST /api/uploads/quest-photo`, client helper `uploadViaApi()` in `lib/api/fetcher.ts` |
@@ -166,7 +166,7 @@ design/unsw-quest/         # Wireframes
 
 - The PRD and the spec sheet sometimes disagree — when they do, **the spec sheet wins** (it captures the hackathon MVP pivot: Kahoot-style join, anagram + geocache puzzles, individual play, no GPS verification).
 - Auth is intentionally absent. Identity = `quest_device_id` cookie (Quest) / `localStorage` `player_id` (MVP). Server logic is trusted — there is no per-row auth.
-- The `supabase/` directory is **legacy** — old migrations + config kept for historical reference only. It is not used at runtime; the live stack is Neon + Drizzle.
+- The Supabase→Neon migration is complete and its scaffolding has been removed. The retired migrations remain recoverable in git history; `scripts/db/clean-schema-dump.md` records how the Neon schema was produced.
 
 ---
 

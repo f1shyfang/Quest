@@ -7,8 +7,7 @@
 --
 -- Adds 3 clues to each of the 3 existing tiers, mixing all three verification
 -- types and covering UNSW Kensington landmarks not yet used by the original
--- seed (supabase/migrations/20260519000002_seed_quest_content.sql, kept only
--- as a historical record). Voice/format match that seed and
+-- v1 seed. Voice/format match the existing clues and
 -- docs/unsw-quest/clue_content_v1.md.
 --
 -- HUNT ID IS LOOKED UP BY SLUG, not hardcoded: the live Neon DB's UNSW 101 hunt
