@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import useSWR from "swr";
+import { swrFetcher } from "@/lib/api/fetcher";
 
 type SessionRow = {
   id: string;
@@ -50,8 +51,6 @@ export function StandingsView({
   initialSessions: SessionRow[];
   totalClues: number;
 }) {
-  const supabase = useMemo(() => createClient(), []);
-  const [sessions, setSessions] = useState<SessionRow[]>(initialSessions);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -59,36 +58,12 @@ export function StandingsView({
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`hunt-leaderboard:${huntId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "quest_hunt_sessions", filter: `hunt_id=eq.${huntId}` },
-        async () => {
-          const { data: raw } = await supabase
-            .from("quest_hunt_sessions")
-            .select("*")
-            .eq("hunt_id", huntId);
-          if (!raw) return;
-          const teamIds = raw.map((s) => s.team_id);
-          const { data: teams } = teamIds.length
-            ? await supabase
-                .from("quest_teams")
-                .select("id, name")
-                .in("id", teamIds)
-            : { data: [] };
-          const byId = new Map((teams ?? []).map((t) => [t.id, t.name]));
-          setSessions(
-            raw.map((s) => ({ ...s, team_name: byId.get(s.team_id) ?? "Team" })) as SessionRow[],
-          );
-        },
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, huntId]);
+  const { data } = useSWR<{ sessions: SessionRow[] }>(
+    `/api/quest/standings/${huntId}`,
+    swrFetcher,
+    { refreshInterval: 2500, fallbackData: { sessions: initialSessions } },
+  );
+  const sessions = data?.sessions ?? initialSessions;
 
   // Sort: completed first by total_time, then in_progress by clues-unlocked desc + elapsed asc, lobby last.
   const ranked = useMemo(() => {
