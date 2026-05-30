@@ -1,32 +1,9 @@
-import { unstable_cache } from "next/cache";
-import {
-  createFreeroomsClient,
-  FreeroomsError,
-  type FreeroomsClient,
-} from "@/lib/freerooms/client";
+import { FreeroomsError } from "@/lib/freerooms/client";
 import { getFreeRooms } from "@/lib/rooms/get-free-rooms";
 import { selectRoomsForHunt } from "@/lib/rooms/select-rooms";
 import { buildRoomHuntDraft } from "@/lib/quest/generate-room-hunt";
 import { createRoomHunt } from "@/lib/quest/create-room-hunt";
-import { db } from "@/lib/db/client";
-import { buildingEnrichments } from "@/lib/db/schema";
-
-const ONE_DAY_SECONDS = 60 * 60 * 24;
-
-function createCachedFreeroomsClient(): FreeroomsClient {
-  const base = createFreeroomsClient();
-  return {
-    ...base,
-    getBuildings: unstable_cache(() => base.getBuildings(), ["freerooms-buildings"], {
-      revalidate: ONE_DAY_SECONDS,
-      tags: ["freerooms-static"],
-    }),
-    getRooms: unstable_cache(() => base.getRooms(), ["freerooms-rooms"], {
-      revalidate: ONE_DAY_SECONDS,
-      tags: ["freerooms-static"],
-    }),
-  };
-}
+import { createCachedFreeroomsClient, readBuildingEnrichments } from "@/lib/rooms/freerooms-cache";
 
 const VALID_USAGES = new Set(["AUD", "CMLB", "LAB", "LCTR", "MEET", "SDIO", "TUSM"]);
 const MAX_COUNT = 27; // 3 tiers * 9 clues
@@ -90,18 +67,9 @@ export async function POST(req: Request): Promise<Response> {
   const { count, capacity, usage, nearLat, nearLng } = parsed.value;
 
   try {
-    const readEnrichments = async () =>
-      db
-        .select({
-          building_id: buildingEnrichments.buildingId,
-          photo_url: buildingEnrichments.photoUrl,
-          address: buildingEnrichments.address,
-        })
-        .from(buildingEnrichments);
-
     const free = await getFreeRooms(
       { statusFilter: "free", capacity, usage, nearLat, nearLng },
-      { freerooms: createCachedFreeroomsClient(), readEnrichments },
+      { freerooms: createCachedFreeroomsClient(), readEnrichments: readBuildingEnrichments },
     );
 
     const selected = selectRoomsForHunt(free.rooms, {

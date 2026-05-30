@@ -60,6 +60,8 @@ describe("POST /api/quest/rooms/generate", () => {
     const body = await res.json();
     expect(body.slug).toMatch(/^rooms-/);
     expect(body.huntId).toBe("hunt-1");
+    // The real selectRoomsForHunt runs and returns the first room as hub when no
+    // coords are given, so "A" is the first of the two-room fixture.
     expect(body.hub_room.room_id).toBe("A");
     expect(mockedCreate).toHaveBeenCalledOnce();
   });
@@ -84,5 +86,29 @@ describe("POST /api/quest/rooms/generate", () => {
     const res = await POST(makeReq({ count: 2 }));
     expect(res.status).toBe(503);
     expect((await res.json()).error).toBe("rooms_service_unavailable");
+  });
+
+  it("returns 400 when count is 0 (below minimum)", async () => {
+    const res = await POST(makeReq({ count: 0 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).param).toBe("count");
+  });
+
+  it("returns 400 when count is 28 (above maximum)", async () => {
+    const res = await POST(makeReq({ count: 28 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).param).toBe("count");
+  });
+
+  it("returns 400 when nearLat is provided without nearLng", async () => {
+    const res = await POST(makeReq({ nearLat: -33.9 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).param).toBe("near_lat_lng");
+  });
+
+  it("returns 400 when capacity is -1 (negative)", async () => {
+    const res = await POST(makeReq({ capacity: -1 }));
+    expect(res.status).toBe(400);
+    expect((await res.json()).param).toBe("capacity");
   });
 });
