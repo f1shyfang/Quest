@@ -28,3 +28,15 @@ export async function swrFetcher<T = unknown>(url: string): Promise<T> {
   if (!res.ok) throw new Error(`request failed: ${res.status}`);
   return res.json() as Promise<T>;
 }
+
+/** Upload a file to the quest-photo blob route; returns the public URL or throws. */
+export async function uploadViaApi(file: File | Blob): Promise<string> {
+  const fd = new FormData();
+  fd.set("file", file);
+  const res = await fetch("/api/uploads/quest-photo", { method: "POST", body: fd });
+  const json = (await res.json().catch(() => null)) as { url?: string; error?: string } | null;
+  if (!res.ok || !json?.url) {
+    throw new Error(json?.error ?? "upload_failed");
+  }
+  return json.url;
+}
