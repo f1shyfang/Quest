@@ -1,4 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
+
+// enrich-buildings.ts statically imports the Drizzle/Neon client, which
+// constructs a Neon connection from DATABASE_URL at module load. The tests
+// inject a fake `supabase` dep and never touch the real `db`, so stub the
+// module to avoid requiring a live connection string during import.
+vi.mock("@/lib/db/client", () => ({ db: {} }));
+
 import { enrichBuildings, type EnrichBuildingsDeps } from "./enrich-buildings";
 import type { FreeroomsBuilding } from "@/lib/freerooms/types";
 import type { FoursquarePlace } from "@/lib/foursquare/types";

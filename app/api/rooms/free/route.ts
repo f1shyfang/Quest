@@ -6,7 +6,8 @@ import {
 } from "@/lib/freerooms/client";
 import { getFreeRooms } from "@/lib/rooms/get-free-rooms";
 import type { GetFreeRoomsParams } from "@/lib/rooms/types";
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/db/client";
+import { buildingEnrichments } from "@/lib/db/schema";
 
 // Wrap the underlying Freerooms client so building/room lists are cached
 // at the Next layer for ~24h (per design spec §3). Live status is NOT cached.
@@ -125,13 +126,14 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   try {
-    const supabase = await createClient();
     const readEnrichments = async () => {
-      const { data, error } = await supabase
-        .from("building_enrichments")
-        .select("building_id, photo_url, address");
-      if (error) throw error;
-      return data ?? [];
+      return db
+        .select({
+          building_id: buildingEnrichments.buildingId,
+          photo_url: buildingEnrichments.photoUrl,
+          address: buildingEnrichments.address,
+        })
+        .from(buildingEnrichments);
     };
 
     const result = await getFreeRooms(parsed.value, {

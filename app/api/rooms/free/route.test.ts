@@ -8,12 +8,8 @@ vi.mock("@/lib/freerooms/client", async () => {
   >("@/lib/freerooms/client");
   return { ...actual, createFreeroomsClient: vi.fn() };
 });
-vi.mock("@/lib/supabase/server", () => ({
-  createClient: vi.fn().mockResolvedValue({
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockResolvedValue({ data: [], error: null }),
-    }),
-  }),
+vi.mock("@/lib/db/client", () => ({
+  db: { select: vi.fn(() => ({ from: vi.fn().mockResolvedValue([]) })) },
 }));
 vi.mock("@/lib/rooms/get-free-rooms", async () => {
   const actual = await vi.importActual<typeof import("@/lib/rooms/get-free-rooms")>(
